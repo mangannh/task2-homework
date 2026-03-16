@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weather</title>
+
+    <style>
+
+        body{
+            font-family:Arial;
+            background:#eef2f7;
+            margin:0;
+        }
+
+        .container{
+            max-width:1000px;
+            margin:auto;
+            padding:30px;
+        }
+
+        .header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .search{
+            padding:10px;
+            border-radius:20px;
+            border:1px solid #ccc;
+            width:200px;
+        }
+
+        .main{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-top:20px;
+        }
+
+        .tempBox{
+            display:flex;
+            align-items:center;
+        }
+
+        .icon{
+            font-size:50px;
+        }
+
+        .temp{
+            font-size:70px;
+            font-weight:bold;
+            margin-left:10px;
+        }
+
+        .unit{
+            font-size:25px;
+            margin-left:5px;
+        }
+
+        .info{
+            font-size:14px;
+        }
+
+        .tabs{
+            margin-top:25px;
+        }
+
+        .tab{
+            padding:10px 20px;
+            border-radius:20px;
+            border:1px solid #ccc;
+            background:white;
+            cursor:pointer;
+            margin-right:8px;
+        }
+
+        .tab.active{
+            background:#1a73e8;
+            color:white;
+        }
+
+        .hourly{
+            display:flex;
+            gap:15px;
+            margin-top:20px;
+            overflow-x:auto;
+            padding:15px;
+            background:white;
+            border-radius:10px;
+        }
+
+        .hour{
+            min-width:80px;
+            text-align:center;
+        }
+
+        .daily{
+            display:flex;
+            gap:20px;
+            margin-top:20px;
+        }
+
+        .day{
+            text-align:center;
+            background:white;
+            padding:15px;
+            border-radius:10px;
+            width:100px;
+        }
+
+        .weatherIcon{
+            font-size:28px;
+            margin:5px 0;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h2 id="city">Hanoi</h2>
+        <input class="search" id="search" placeholder="Search city">
+    </div>
+
+    <div class="main">
+
+        <div class="tempBox">
+            <div class="icon">☀️</div>
+            <div class="temp">
+                <span id="temperature">--</span>
+            </div>
+            <div class="unit">°C</div>
+        </div>
+
+        <div class="info">
+            <p>Wind: <span id="wind"></span></p>
+            <p>Humidity: <span id="humidity"></span></p>
+            <p>UV Index: <span id="uv"></span></p>
+        </div>
+
+    </div>
+
+    <div class="tabs">
+
+        <button class="tab active" data-type="temperature">Temperature</button>
+        <button class="tab" data-type="wind">Wind</button>
+        <button class="tab" data-type="humidity">Humidity</button>
+        <button class="tab" data-type="uv">UV Index</button>
+
+    </div>
+
+    <h3>Hourly Forecast</h3>
+    <div id="hourly" class="hourly"></div>
+
+    <h3>7 Day Forecast</h3>
+    <div id="daily" class="daily"></div>
+
+</div>
+
+<script>
+
+    let weatherData
+    let currentType="temperature"
+
+
+    async function getWeather(lat,lon,cityName){
+
+        document.getElementById("city").innerText=cityName
+
+        const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relativehumidity_2m,windspeed_10m,uv_index&daily=temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto`
+
+        const res=await fetch(url)
+        weatherData=await res.json()
+
+        document.getElementById("temperature").innerText=
+            weatherData.current_weather.temperature
+
+        document.getElementById("wind").innerText=
+            weatherData.current_weather.windspeed+" km/h"
+
+        document.getElementById("humidity").innerText=
+            weatherData.hourly.relativehumidity_2m[0]+"%"
+
+        document.getElementById("uv").innerText=
+            weatherData.hourly.uv_index[0]
+
+        renderHourly()
+        renderDaily()
+
+    }
+
+
+    function renderHourly(){
+
+        let hourly=document.getElementById("hourly")
+        hourly.innerHTML=""
+
+        for(let i=0;i<24;i++){
+
+            let div=document.createElement("div")
+            div.className="hour"
+
+            let time=weatherData.hourly.time[i].slice(11)
+
+            let value
+
+            if(currentType==="temperature")
+                value=weatherData.hourly.temperature_2m[i]+"°"
+
+            if(currentType==="wind")
+                value=weatherData.hourly.windspeed_10m[i]+" km/h"
+
+            if(currentType==="humidity")
+                value=weatherData.hourly.relativehumidity_2m[i]+"%"
+
+            if(currentType==="uv")
+                value=weatherData.hourly.uv_index[i]
+
+            div.innerHTML=`
+<p>${time}</p>
+<div class="weatherIcon">📊</div>
+<p>${value}</p>
+`
+
+            hourly.appendChild(div)
+
+        }
+
+    }
+
+
+    function renderDaily(){
+
+        let daily=document.getElementById("daily")
+        daily.innerHTML=""
+
+        for(let i=0;i<7;i++){
+
+            let div=document.createElement("div")
+            div.className="day"
+
+            let date=new Date(weatherData.daily.time[i])
+            let day=date.toLocaleDateString("en-US",{weekday:"short"})
+
+            div.innerHTML=`
+<p>${day}</p>
+<div class="weatherIcon">☀️</div>
+<p>${weatherData.daily.temperature_2m_max[i]}° / ${weatherData.daily.temperature_2m_min[i]}°</p>
+`
+
+            daily.appendChild(div)
+
+        }
+
+    }
+
+
+
+    /* default city */
+
+    getWeather(21.0285,105.8542,"Hanoi")
+
+
+
+    /* search city */
+
+    document.getElementById("search")
+        .addEventListener("keypress",async function(e){
+
+            if(e.key==="Enter"){
+
+                let city=this.value
+
+                const geo=`https://geocoding-api.open-meteo.com/v1/search?name=${city}`
+
+                const res=await fetch(geo)
+                const data=await res.json()
+
+                let lat=data.results[0].latitude
+                let lon=data.results[0].longitude
+
+                getWeather(lat,lon,city)
+
+            }
+
+        })
+
+
+
+    /* tabs */
+
+    const tabs=document.querySelectorAll(".tab")
+
+    tabs.forEach(tab=>{
+
+        tab.onclick=()=>{
+
+            tabs.forEach(t=>t.classList.remove("active"))
+            tab.classList.add("active")
+
+            currentType=tab.dataset.type
+
+            renderHourly()
+
+        }
+
+    })
+
+</script>
+
+</body>
+</html>
